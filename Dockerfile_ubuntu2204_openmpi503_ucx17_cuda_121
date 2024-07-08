@@ -1,0 +1,34 @@
+FROM quay.io/jeani/base_ubuntu_cuda_ucx:latest
+
+# Authors Jean Iaquinta
+# Contact jeani@uio.no
+# Version v1.0.0
+#
+# This is a definition file for a container based on Ubuntu22.04 with OpenMPI5.0.3 and support for UCX1.17.0 and Cuda12.1.0
+
+# UCC version 1.3.0
+RUN wget -q -nc --no-check-certificate -P /var/tmp https://github.com/openucx/ucc/archive/refs/tags/v1.3.0.tar.gz && \
+    tar -x -f /var/tmp/v1.3.0.tar.gz -C /var/tmp -z && \
+    cd /var/tmp/ucc-1.3.0 && ./autogen.sh && CC=gcc CXX=g++ F77=gfortran FC=gfortran ./configure --prefix=/usr/local/ucc --with-ucx=/usr/local/ucx --with-rdmacm=/usr/local/rdma-core-52.0/build --with-cuda=/usr/local/cuda-12.1/targets/x86_64-linux && \
+    make -j$(nproc) && make -j$(nproc) install && \
+    echo "/usr/local/ucc/lib" >> /etc/ld.so.conf.d/espresso.conf && ldconfig && \
+    rm -rf /var/tmp/ucc-1.3.0 /var/tmp/v1.3.0.tar.gz
+ENV CPATH=/usr/local/ucc/include:$CPATH \
+    LD_LIBRARY_PATH=/usr/local/ucc/lib:$LD_LIBRARY_PATH \
+    LIBRARY_PATH=/usr/local/ucc/lib:$LIBRARY_PATH \
+    PATH=/usr/local/ucc/bin:$PATH
+
+# OpenMPI version 5.0.3
+RUN wget -q -nc --no-check-certificate -P /var/tmp https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.3.tar.gz && \
+    tar -x -f /var/tmp/openmpi-5.0.3.tar.gz -C /var/tmp -z && \
+    cd /var/tmp/openmpi-5.0.3 && CC=gcc CXX=g++ FC=gfortran ./configure --prefix=/usr/local/openmpi --with-libevent=internal --with-hwloc=internal --with-pmix=internal --with-ucx=/usr/local/ucx --with-ucc=/usr/local/ucc --without-verbs --with-cuda=/usr/local/cuda-12.1/targets/x86_64-linux FCFLAGS='-fallow-argument-mismatch -fallow-invalid-boz' && \
+    make -j$(nproc) && make -j$(nproc) install && \
+    echo "/usr/local/openmpi/lib" >> /etc/ld.so.conf.d/espresso.conf && ldconfig && \
+    rm -rf /var/tmp/openmpi-5.0.3 /var/tmp/openmpi-5.0.3.tar.gz
+ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH \
+    LIBRARY_PATH=/usr/local/openmpi/lib:$LIBRARY_PATH \
+    CPATH=/usr/local/openmpi/include:$CPATH \
+    PATH=/usr/local/openmpi/bin:$PATH
+
+# --------------------------------------------------------------------------------------------------------------------
+
